@@ -7,29 +7,23 @@ const client = new MongoClient(connectionString, {
   useUnifiedTopology: true,
 });
 
+let dbConnection;
 
-
-async function main() {
-    try {
-        await client.connect();
-        await listDatabases(client);
-    } catch (e) {
-        console.error(e);
-    }
-    finally {
-        await client.close();
-    }
-}
-
-main().catch(console.error);
-
-async function listDatabases(client) {
-    const databasesList = await client.db().admin().listDatabases();
-
-    console.log("Databases");
-    databasesList.databases.forEach(db => {
-        console.log(`- ${db.name}`)
-    })
-}
-
-
+module.exports = {
+    connectToServer: function (callback) {
+      client.connect(function (err, db) {
+        if (err || !db) {
+          return callback(err);
+        }
+  
+        dbConnection = db.db('sample_airbnb');
+        console.log('Successfully connected to MongoDB.');
+  
+        return callback();
+      });
+    },
+  
+    getDb: function () {
+      return dbConnection;
+    },
+  };
