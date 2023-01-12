@@ -7,23 +7,16 @@ const client = new MongoClient(connectionString, {
   useUnifiedTopology: true,
 });
 
-let dbConnection;
+const connectDB = async () => {
+    try {
+        await client.connect();
+        console.log("Connected to MongoDB")
+    } catch (err) {
+        console.log(err);
+        process.exit(1);
+    } finally {
+        await client.close();
+    }
+}
 
-module.exports = {
-    connectToServer: function (callback) {
-      client.connect(function (err, db) {
-        if (err || !db) {
-          return callback(err);
-        }
-  
-        dbConnection = db.db('sample_airbnb');
-        console.log('Successfully connected to MongoDB.');
-  
-        return callback();
-      });
-    },
-  
-    getDb: function () {
-      return dbConnection;
-    },
-  };
+module.exports = connectDB
