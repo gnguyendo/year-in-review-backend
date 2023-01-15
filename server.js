@@ -35,13 +35,14 @@ const startServer = async () => {
 startServer();
 
 //Riot API Calls
-riotAPIKey = "RGAPI-36a7b7c1-957d-4f5d-b22b-3f528b2a249a"
+riotAPIKey = process.env.RIOT_API;
+
 leagueQueues = ["RANKED_SOLO_5x5", "RANKED_FLEX_SR", "RANKED_FLEX_TT"];
 leagueTiers = ["DIAMOND", "PLATINUM", "GOLD", "SILVER", "BRONZE", "IRON"];
 leagueDivisions = ["I", "II", "III", "I"];
 
 
-async function fetchallRanks(queue, tier, division) {
+async function createallProfiles(queue, tier, division) {
     try {    
         const summonerName = "mynamejefff"
         const link = `https://na1.api.riotgames.com/lol/league/v4/entries/${queue}/${tier}/${division}?page=1&api_key=${riotAPIKey}`
@@ -53,13 +54,13 @@ async function fetchallRanks(queue, tier, division) {
     }
 };
 
-testRank = "RANKED_SOLO_5x5"
+testQueue = "RANKED_SOLO_5x5"
 testTier = "GOLD"
 testDivision = "I"
 
 
 // async function updateAllAPI(client, ) {
-//     fetchallRanks(testRank, testTier, testDivision).then(data => {
+//     createallProfiles(testQueue, testTier, testDivision).then(data => {
 //         for (const lolProfile of data) {
 //             console.log(lolProfile);
 //         }
@@ -77,25 +78,41 @@ async function main () {
 
 
 async function updateAllAPI(client) {
-    fetchallRanks(testRank, testTier, testDivision).then(async data => {
+    try {createallProfiles(testQueue, testTier, testDivision).then(async data => {
         for (const lolProfile of data) {
-            // console.log(lolProfile)
-            const res = await updateProfile(client, lolProfile.summonerName, 
+            // const queType = {$set: {}};
+            const res = await updateByProfile(client, lolProfile.summonerName, 
                 {
-                    _id: lolProfile.summonerName,
+                    id: lolProfile.summonerName,
                     leagueId: lolProfile.leagueId,
                     summonerId: lolProfile.summonerId,
+                    // "files.$.savedId":savedId,
+                    testsadfkjsadfk: {
+                        rank: lolProfile.rank,
+                        tier: lolProfile.tier,
+                        wins: lolProfile.wins,
+                        losses: lolProfile.losses,
+                        leaguePoints: lolProfile.leaguePoints
+                    }
+                
                 });
-            console.log(`${res} documents were updated`)
+            // console.log(`${res} documents were updated`)
         }
         console.log("All Profiles created");
-    })
+    })}
+    catch (err) {
+        console.log(err);
+    }
 }
 
 
-async function updateProfile(client, summonerName, updatedProfile) {
-    const result = await client.db("League").collection("Summoners").updateOne({_id: summonerName}, {$set: updatedProfile},{upsert: true})
-    console.log(result)
+async function updateByProfile(client, summonerName, updatedProfile) {
+    const result = await client.db("League").collection("Summoners").updateOne
+        (
+            {_id: summonerName}, 
+            {$set: updatedProfile},
+            {upsert: true}
+        )
 }   
 
 main().catch(console.error);
