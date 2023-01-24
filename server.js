@@ -3,7 +3,7 @@ require("dotenv").config();
 const server = express();
 const cors = require("cors");
 const connectDB = require("./database/db");
-import fetch from 'node-fetch';
+const fetch = require('node-fetch');
 
 
 //Temp
