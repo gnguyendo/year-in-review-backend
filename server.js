@@ -95,7 +95,6 @@ async function getLeagueEntrieswithPaging(queue, tier, division) {
 async function getLeagueEntries(queue, tier, division, pageNum) {
     const link = `https://na1.api.riotgames.com/lol/league/v4/entries/${queue}/${tier}/${division}?page=${pageNum}&api_key=${riotAPIKey}`;
     const response = await fetch(link);
-    
     let data = await response.json();
     if (!Array.isArray(data) && data.status.status_code === 429) {
         console.log(`Retrying for ${queue}  ${tier}  ${division} ${pageNum} sleeping for 60 seconds`);
