@@ -56,8 +56,13 @@ async function updateAllProfilesinRiotQueues(leagueQueues, leagueTiers, leagueDi
         }
     }
     return Promise.all(jobQueue)
-    // console.log("All Queues Updated")
 }
+
+
+async function testUpdateAllProfiles(queue, tier, division) {
+    return getLeagueEntrieswithPaging(queue, tier, division);
+}
+
 
 async function getLeagueEntrieswithPaging(queue, tier, division) {
     console.log(`Getting ${queue}, ${tier}, ${division}`);
@@ -65,7 +70,7 @@ async function getLeagueEntrieswithPaging(queue, tier, division) {
     let pageNum = 1;
     while (pageNum > 0) {
         const data = await getLeagueEntries(queue, tier, division, pageNum);
-        if (data.length < 1 ) {
+        if (!Object.keys(data).length) {
             break;
         }
         for (const lolProfile of data) {
@@ -73,7 +78,7 @@ async function getLeagueEntrieswithPaging(queue, tier, division) {
         }
         pageNum++
     }
-    console.log(`Writing to DB for ${queue} ${tier} ${division}`)
+    console.log(`Writing to DB for ${queue} ${tier} ${division}`);
     for (const lolProfile of allLeagueEntryPages) {
         const res = await updateByProfile(client, lolProfile.summonerName, 
             {
@@ -106,10 +111,15 @@ async function getLeagueEntries(queue, tier, division, pageNum) {
 }
 
 
+const testQueue = "RANKED_SOLO_5x5";
+const testRank = "SILVER";
+const testTier = "I";
+
 async function main () {
     try {
         await client.connect();
-        updateAllProfilesinRiotQueues(leagueQueues, leagueTiers, leagueDivisions);
+        await updateAllProfilesinRiotQueues(leagueQueues, leagueTiers, leagueDivisions);
+        // await testUpdateAllProfiles(testQueue, testRank, testTier);
     } catch (err) {
         console.log(err);
         throw(err);
