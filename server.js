@@ -3,8 +3,6 @@ require("dotenv").config();
 const server = express();
 const cors = require("cors");
 const connectDB = require("./database/db");
-// const fetch = require('node-fetch');
-
 
 //Temp
 const {MongoClient} = require("mongodb");
@@ -64,8 +62,8 @@ async function getLeagueEntrieswithPaging(queue, tier, division) {
     let pageNum = 1;
     while (pageNum > 0) {
         const data = await getLeagueEntries(queue, tier, division, pageNum);
-        console.log("Server.getLeagueEntries.pageNum:", pageNum);
-        console.log("Server.getLeagueEntries.data:", data);
+        // console.log("Server.getLeagueEntries.pageNum:", pageNum);
+        // console.log("Server.getLeagueEntries.data:", data);
         if (!Object.keys(data).length) {
             break;
         }   
