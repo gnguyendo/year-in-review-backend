@@ -59,11 +59,6 @@ async function updateAllProfilesinRiotQueues(leagueQueues, leagueTiers, leagueDi
 }
 
 
-async function testUpdateAllProfiles(queue, tier, division) {
-    return getLeagueEntrieswithPaging(queue, tier, division);
-}
-
-
 async function getLeagueEntrieswithPaging(queue, tier, division) {
     console.log(`Getting ${queue}, ${tier}, ${division}`);
     const allLeagueEntryPages = [];
@@ -94,7 +89,7 @@ async function getLeagueEntrieswithPaging(queue, tier, division) {
                 }
             });
     }
-    console.log(`${queue} ${tier} ${division} has been updated`);
+    console.log(`Completed write to DB for ${queue} ${tier} ${division}`)
 }
 
 
@@ -103,7 +98,7 @@ async function getLeagueEntries(queue, tier, division, pageNum) {
     const response = await fetch(link);
     let data = await response.json();
     if (!Array.isArray(data) && data.status.status_code === 429) {
-        console.log(`Retrying for ${queue}  ${tier}  ${division} ${pageNum} sleeping for 60 seconds`);
+        console.log(`Retrying for ${queue}  ${tier}  ${division} Page:${pageNum}, sleeping for 60 seconds`);
         await new Promise(sleep => setTimeout(sleep, 60000));
         return getLeagueEntries(queue, tier, division, pageNum);
     }
@@ -111,15 +106,10 @@ async function getLeagueEntries(queue, tier, division, pageNum) {
 }
 
 
-const testQueue = "RANKED_SOLO_5x5";
-const testRank = "SILVER";
-const testTier = "I";
-
 async function main () {
     try {
         await client.connect();
         await updateAllProfilesinRiotQueues(leagueQueues, leagueTiers, leagueDivisions);
-        // await testUpdateAllProfiles(testQueue, testRank, testTier);
     } catch (err) {
         console.log(err);
         throw(err);
