@@ -58,7 +58,6 @@ async function updateAllProfilesinRiotQueues(leagueQueues, leagueTiers, leagueDi
     return Promise.all(jobQueue)
 }
 
-
 async function getLeagueEntrieswithPaging(queue, tier, division) {
     console.log(`Getting ${queue}, ${tier}, ${division}`);
     const allLeagueEntryPages = [];
