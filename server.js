@@ -65,9 +65,11 @@ async function getLeagueEntrieswithPaging(queue, tier, division) {
     let pageNum = 1;
     while (pageNum > 0) {
         const data = await getLeagueEntries(queue, tier, division, pageNum);
+        console.log("Server.getLeagueEntries.pageNum:", pageNum);
+        console.log("Server.getLeagueEntries.data:", data);
         if (!Object.keys(data).length) {
             break;
-        }
+        }   
         for (const lolProfile of data) {
             allLeagueEntryPages.push(lolProfile);
         }
