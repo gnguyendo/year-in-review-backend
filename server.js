@@ -6,7 +6,7 @@ const connectDB = require("./database/db");
 
 //Temp
 const {MongoClient} = require("mongodb");
-const { request } = require("express");
+// const { request } = require("express");
 const connectionString = process.env.ATLAS_URI;
 const client = new MongoClient(connectionString, {
     useNewUrlParser: true,
@@ -36,9 +36,13 @@ startServer();
 
 //Riot API Calls
 riotAPIKey = process.env.RIOT_API;
-const leagueQueues = ["RANKED_SOLO_5x5", "RANKED_FLEX_SR"];
+const leagueQueues = ["RANKED_SOLO_5x5"];
 const leagueTiers = ["DIAMOND", "PLATINUM", "GOLD", "SILVER", "BRONZE", "IRON"];
-const leagueDivisions = ["I", "II", "III", "I"];
+const leagueDivisions = ["I", "II", "III", "IV"];
+
+const testQ = "RANKED_SOLO_5x5";
+const testTier = "DIAMOND";
+const testDivision = "I";
 
 
 async function updateAllProfilesinRiotQueues(leagueQueues, leagueTiers, leagueDivisions) {
@@ -62,21 +66,19 @@ async function getLeagueEntrieswithPaging(queue, tier, division) {
     let pageNum = 1;
     while (pageNum > 0) {
         const data = await getLeagueEntries(queue, tier, division, pageNum);
-        // console.log("Server.getLeagueEntries.pageNum:", pageNum);
-        // console.log("Server.getLeagueEntries.data:", data);
         if (!Object.keys(data).length) {
             break;
         }   
         for (const lolProfile of data) {
             allLeagueEntryPages.push(lolProfile);
         }
-        pageNum++
+        pageNum++;
     }
     console.log(`Writing to DB for ${queue} ${tier} ${division}`);
     for (const lolProfile of allLeagueEntryPages) {
         const res = await updateByProfile(client, lolProfile.summonerName, 
             {
-                id: lolProfile.summonerName,
+                summonerName: lolProfile.summonerName,
                 leagueId: lolProfile.leagueId,
                 summonerId: lolProfile.summonerId,
                 [lolProfile.queueType]: {
@@ -88,7 +90,7 @@ async function getLeagueEntrieswithPaging(queue, tier, division) {
                 }
             });
     }
-    console.log(`Completed write to DB for ${queue} ${tier} ${division}`)
+    console.log(`Completed write to DB for ${queue} ${tier} ${division}`);
 }
 
 
@@ -97,7 +99,7 @@ async function getLeagueEntries(queue, tier, division, pageNum) {
     const response = await fetch(link);
     let data = await response.json();
     if (!Array.isArray(data) && data.status.status_code === 429) {
-        console.log(`Retrying for ${queue}  ${tier}  ${division} Page:${pageNum}, sleeping for 60 seconds`);
+        console.log(`Retrying for ${queue} ${tier} ${division} PAGE:${pageNum}, sleeping for 60 seconds`);
         await new Promise(sleep => setTimeout(sleep, 60000));
         return getLeagueEntries(queue, tier, division, pageNum);
     }
@@ -108,7 +110,10 @@ async function getLeagueEntries(queue, tier, division, pageNum) {
 async function main () {
     try {
         await client.connect();
-        await updateAllProfilesinRiotQueues(leagueQueues, leagueTiers, leagueDivisions);
+
+        // await updateAllProfilesinRiotQueues(leagueQueues, leagueTiers, leagueDivisions);
+        console.log("Completed all Profile Updates");
+
     } catch (err) {
         console.log(err);
         throw(err);
@@ -116,12 +121,70 @@ async function main () {
 };
 
 async function updateByProfile(client, summonerName, updatedProfile) {
+    let summonerNameForID = summonerName.toString().toLowerCase();
     const result = await client.db("League").collection("Summoners").updateOne
         (
-            {_id: summonerName}, 
+            {_id: summonerNameForID}, 
             {$set: updatedProfile},
             {upsert: true}
-        )
-}   
+        );
+}  
+
+
+async function summonerInfobySummonerName(summonerName) {
+    const link = `https://na1.api.riotgames.com/lol/summoner/v4/summoners/by-name/${summonerName}?api_key=${riotAPIKey}`;
+    const response = await fetch(link)
+    let data = await response.json();
+    console.log(data);
+    const res = await updateByProfile(client, data.name, 
+        {   
+            summonerName: data.name,
+            summonerId: data.id,
+            puuid: data.puuid,
+            summonerLevel: data.summonerLevel,
+            accountID: data.accountID
+        });
+    console.log(`${summonerName} has been updated to DB`);
+}
+
+async function updateRankbySummonerName(summonerName) {
+    let summonerNameForID = summonerName.toString().toLowerCase();
+    await summonerInfobySummonerName(summonerNameForID);
+    console.log(`${summonerName} profile has been updated/created`)
+    const summonerProfile = await client.db("League").collection("Summoners").findOne({_id: summonerNameForID});
+    const link = `https://na1.api.riotgames.com/lol/league/v4/entries/by-summoner/${summonerProfile.summonerId}?api_key=${riotAPIKey}`;
+    const response = await fetch(link);
+    let data = await response.json();
+    for (lolProfile of data) {
+        const res = await updateByProfile(client, lolProfile.summonerName, 
+            {
+                summonerName: lolProfile.summonerName,
+                leagueId: lolProfile.leagueId,
+                summonerId: lolProfile.summonerId,
+                [lolProfile.queueType]: {
+                    rank: lolProfile.rank,
+                    tier: lolProfile.tier,
+                    wins: lolProfile.wins,
+                    losses: lolProfile.losses,
+                    leaguePoints: lolProfile.leaguePoints
+                }
+            }
+        );
+    }
+    const result = await client.db("League").collection("Summoners").findOne({_id: summonerNameForID})
+    return result;
+}
 
 main().catch(console.error);
+
+//Routes
+server.get('/:id', async(req, res) => {
+    try {
+        const {id} = req.params
+        const userProfile = await updateRankbySummonerName(id);
+        console.log(userProfile);
+        res.json(userProfile);
+    } catch (err) {
+        console.log(err);
+    }
+});
