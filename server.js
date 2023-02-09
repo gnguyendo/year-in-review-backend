@@ -110,7 +110,6 @@ async function getLeagueEntries(queue, tier, division, pageNum) {
 async function main () {
     try {
         await client.connect();
-
         // await updateAllProfilesinRiotQueues(leagueQueues, leagueTiers, leagueDivisions);
         console.log("Completed all Profile Updates");
 
@@ -142,7 +141,6 @@ async function summonerInfobySummonerName(summonerName) {
             summonerId: data.id,
             puuid: data.puuid,
             summonerLevel: data.summonerLevel,
-            accountID: data.accountID
         });
     console.log(`${summonerName} has been updated to DB`);
 }
@@ -178,12 +176,22 @@ async function updateRankbySummonerName(summonerName) {
 main().catch(console.error);
 
 //Routes
+server.get('/', async(req, res) => {
+    try {
+        return res.json({message: "Connected"});
+    } catch (err) {
+        console.log(err);
+    }
+});
+
+
+
 server.get('/:id', async(req, res) => {
     try {
         const {id} = req.params
         const userProfile = await updateRankbySummonerName(id);
         console.log(userProfile);
-        res.json(userProfile);
+        return res.json(userProfile);
     } catch (err) {
         console.log(err);
     }
