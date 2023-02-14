@@ -40,11 +40,6 @@ const leagueQueues = ["RANKED_SOLO_5x5"];
 const leagueTiers = ["DIAMOND", "PLATINUM", "GOLD", "SILVER", "BRONZE", "IRON"];
 const leagueDivisions = ["I", "II", "III", "IV"];
 
-const testQ = "RANKED_SOLO_5x5";
-const testTier = "DIAMOND";
-const testDivision = "I";
-
-
 async function updateAllProfilesinRiotQueues(leagueQueues, leagueTiers, leagueDivisions) {
     jobQueue = []
     for (const queue of leagueQueues) {
@@ -147,9 +142,12 @@ async function summonerInfobySummonerName(summonerName) {
 
 async function updateRankbySummonerName(summonerName) {
     let summonerNameForID = summonerName.toString().toLowerCase();
-    await summonerInfobySummonerName(summonerNameForID);
-    console.log(`${summonerName} profile has been updated/created`)
-    const summonerProfile = await client.db("League").collection("Summoners").findOne({_id: summonerNameForID});
+    let summonerProfile = await client.db("League").collection("Summoners").findOne({_id: summonerNameForID});
+    if (!summonerProfile) {
+        await summonerInfobySummonerName(summonerNameForID);
+        console.log(`${summonerName} profile has been updated/created`);
+        summonerProfile = await client.db("League").collection("Summoners").findOne({_id: summonerNameForID});
+    }
     const link = `https://na1.api.riotgames.com/lol/league/v4/entries/by-summoner/${summonerProfile.summonerId}?api_key=${riotAPIKey}`;
     const response = await fetch(link);
     let data = await response.json();
@@ -169,8 +167,7 @@ async function updateRankbySummonerName(summonerName) {
             }
         );
     }
-    const result = await client.db("League").collection("Summoners").findOne({_id: summonerNameForID})
-    return result;
+    return await client.db("League").collection("Summoners").findOne({_id: summonerNameForID})
 }
 
 main().catch(console.error);
@@ -183,8 +180,6 @@ server.get('/', async(req, res) => {
         console.log(err);
     }
 });
-
-
 
 server.get('/:id', async(req, res) => {
     try {
