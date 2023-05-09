@@ -38,16 +38,84 @@ startServer();
 riotAPIKey = process.env.RIOT_API;
 
 
+//Riot API Calls
+riotAPIKey = process.env.RIOT_API;
+const leagueQueues = ["RANKED_FLEX_SR"]; // "RANKED_FLEX_SR", "RANKED_SOLO_5x5"
+const leagueTiers = ["DIAMOND", "PLATINUM", "GOLD", "SILVER", "BRONZE", "IRON"];
+const leagueDivisions = ["I", "II", "III", "IV"];
+
+async function updateAllProfilesinRiotQueues(leagueQueues, leagueTiers, leagueDivisions) {
+    jobQueue = []
+    for (const queue of leagueQueues) {
+        for (const tier of leagueTiers) {
+            for (const division of leagueDivisions) {
+                const data = getLeagueEntrieswithPaging(queue, tier, division);
+                jobQueue.push(data);
+                // let data = getLeagueEntrieswithPaging(queue, tier, division);
+                // console.log(`${queue} ${tier} ${division} was updated to DB`)
+            }
+        }
+    }
+    return Promise.all(jobQueue)
+}
+
+async function getLeagueEntrieswithPaging(queue, tier, division) {
+    console.log(`Getting ${queue}, ${tier}, ${division}`);
+    const allLeagueEntryPages = [];
+    let pageNum = 1;
+    while (pageNum > 0) {
+        const data = await getLeagueEntries(queue, tier, division, pageNum);
+        if (!Object.keys(data).length) {
+            break;
+        }   
+        for (const lolProfile of data) {
+            allLeagueEntryPages.push(lolProfile);
+        }
+        pageNum++;
+    }
+    console.log(`Writing to DB for ${queue} ${tier} ${division}`);
+    for (const lolProfile of allLeagueEntryPages) {
+        const res = await updateDBProfile(client, lolProfile.summonerName, 
+            {
+                summonerName: lolProfile.summonerName,
+                leagueId: lolProfile.leagueId,
+                summonerId: lolProfile.summonerId,
+                [lolProfile.queueType]: {
+                    rank: lolProfile.rank,
+                    tier: lolProfile.tier,
+                    wins: lolProfile.wins,
+                    losses: lolProfile.losses,
+                    leaguePoints: lolProfile.leaguePoints
+                }
+            });
+    }
+    console.log(`Completed write to DB for ${queue} ${tier} ${division}`);
+}
+
+
+async function getLeagueEntries(queue, tier, division, pageNum) {
+    const link = `https://na1.api.riotgames.com/lol/league/v4/entries/${queue}/${tier}/${division}?page=${pageNum}&api_key=${riotAPIKey}`;
+    const response = await fetch(link);
+    let data = await response.json();
+    if (!Array.isArray(data) && data.status.status_code === 429) {
+        console.log(`Retrying for ${queue} ${tier} ${division} PAGE:${pageNum}, sleeping for 60 seconds`);
+        await new Promise(sleep => setTimeout(sleep, 60000));
+        return getLeagueEntries(queue, tier, division, pageNum);
+    }
+    return data;
+}
+
 async function main () {
     try {
         await client.connect();
-        // console.log(await findSummonerPUUID('mynamejefff'))
-        // console.log(typeof(await findSummonerPUUID('mynamejefff')))
-        // let allMatches = await allMatchesByPUUID("mynamejefff")
-        // console.log(allMatches)
-        // const test = await addMatchestoDB('mynamejefff')
-        // console.log(await isValidSummoner('mynamejefff'))
+        // await updateAllProfilesinRiotQueues(leagueQueues, leagueTiers, leagueDivisions);
 
+        // const test = await addMatchestoDB('mynamejefff')
+        const result = await isValidSummoner('mynamejefff')
+        console.log(result)
+        const result2 = await isValidSummoner('sdkjfhdsjkf')
+        console.log(result2);
+        console.log("Finished all actions")
     } catch (err) {
         console.log(err);
         throw(err);
@@ -56,11 +124,23 @@ async function main () {
 
 async function isValidSummoner(summonerName) {
     const link = `https://na1.api.riotgames.com/lol/summoner/v4/summoners/by-name/${summonerName}?api_key=${riotAPIKey}`;
-    const response = await fetch(link)
-    let data = await response.json() 
-    console.log(data)
-    return data
+    const response = await fetch(link);
+    if (response.ok) {
+        let data = await response.json();
+        let summoner = await updateDBProfile(client, data.name, 
+            {   
+                summonerName: data.name,
+                summonerId: data.id,
+                puuid: data.puuid,
+                summonerLevel: data.summonerLevel,
+                profileIconID: data.profileIconId
+            });
+        return true;
+    } else {
+        return false;
+    }
 }
+
 
 async function updateDBProfile(client, summonerName, updatedProfile) {
     let summonerNameForID = summonerName.toString().toLowerCase();
@@ -187,7 +267,7 @@ server.get('/validsummoner/:id', async(req, res) => {
     try {
         const {id} = req.params;
         const userProfile = await isValidSummoner(id);
-        return res.json(userProfile);
+        return res.status(200).json(userProfile)
     } catch (err) {
         console.log(err);
     }
